@@ -19,7 +19,8 @@ gcloud beta billing projects link ${project_id} --billing-account ${billing_acco
 gcloud services enable cloudbuild.googleapis.com
 gcloud services enable appengine.googleapis.com
 gcloud services enable cloudscheduler.googleapis.com
-gcloud services enable appengine.googleapis.com
+gcloud services enable vision.googleapis.com
+gcloud services enable calendar-json.googleapis.com
 
 # give yourself a service account so you can run this app locally
 gcloud iam service-accounts create telegram-service-account

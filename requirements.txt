@@ -1,8 +1,14 @@
 Flask
 requests
 
+google
+google_auth_oauthlib
+google-api-python-client
+
 google-cloud
 pybigquery
+google-cloud-texttospeech==1.0.1
+google-cloud-vision
 
 python-telegram-bot
 beautifulsoup4

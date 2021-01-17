@@ -1,7 +1,7 @@
 from flask import jsonify, make_response, Request
 import telegram
 import logging
-from telegram_bot import DefaultConfig as Config, OverallUpdater, Queryer
+from telegram_bot import DefaultConfig as Config, OverallUpdater, Queryer, Observer
 
 ok_response = "ok"
 
@@ -24,9 +24,14 @@ def receiver(request: Request):
         request_json = request.get_json(force=True)
         logging.error(f"Received a POST request: {request_json}")
         update: telegram.Update = telegram.Update.de_json(request_json, Config.bot)
-
         chat_id = update.message.chat.id
-        response = Queryer().get_response(update.message)
+
+        # if update.effective_message.effective_type == 'photo':
+        if len(update.message.photo) != 0:
+            response = Observer().get_response(update.message)
+        else:
+            response = Queryer().get_response(update.message)
+
         if response is None:
             return ok_response
         return send_message_in_https_response(chat_id, response)
