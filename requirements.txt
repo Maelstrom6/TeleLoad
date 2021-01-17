@@ -1,0 +1,13 @@
+Flask
+requests
+
+google-cloud
+pybigquery
+
+python-telegram-bot
+beautifulsoup4
+
+pytube
+Pillow
+mutagen
+sqlalchemy
