@@ -5,6 +5,7 @@ from .models import UpdateLog, UserSetting, LoadTime, SentSong
 from .config import DefaultConfig as Config
 from datetime import datetime, date, timedelta
 import re
+from typing import List
 
 from mutagen.mp4 import MP4Cover
 from mutagen import File
@@ -61,10 +62,10 @@ class OverallUpdater(Updater):
 class CSGOUpdater(Updater):
     update_logs_row_name = "csgo"
 
-    def get_subscribed_chats(self) -> list[UserSetting]:
+    def get_subscribed_chats(self) -> List[UserSetting]:
         query = Config.session.query(UserSetting)
         # column = self.chat_settings_name
-        chats: list[UserSetting] = query.filter(UserSetting.csgo == True).all()
+        chats: List[UserSetting] = query.filter(UserSetting.csgo == True).all()
         return chats
 
     def get_and_send_updates(self):
@@ -95,7 +96,7 @@ class CSGOUpdater(Updater):
 class LoadUpdater(Updater):
     update_logs_row_name = "load"
 
-    def get_subscribed_chats(self) -> list[UserSetting]:
+    def get_subscribed_chats(self) -> List[UserSetting]:
         query = Config.session.query(UserSetting)
         # column = self.chat_settings_name
         chats = query.filter(UserSetting.load == True).all()
@@ -127,7 +128,7 @@ class LoadUpdater(Updater):
             now_str = now.strftime(Config.date_format)
             self.set_local_last_update(now_str)
 
-    def get_subscribed_chats_for(self, code) -> list[UserSetting]:
+    def get_subscribed_chats_for(self, code) -> List[UserSetting]:
         query = Config.session.query(UserSetting)
         chats = query.filter(
             UserSetting.load == True,
@@ -137,7 +138,7 @@ class LoadUpdater(Updater):
 
     def get_suburb_codes(self):
         query = Config.session.query(UserSetting.load_code)
-        chats: list[UserSetting] = query.distinct()
+        chats: List[UserSetting] = query.distinct()
         return [chat.load_code for chat in chats]
 
     def should_run(self) -> bool:
@@ -161,7 +162,7 @@ class LoadUpdater(Updater):
     def get_times_for_today(self, today, stage, code):
         # Consults the database to provide the times for a given date, stage and area
         query = Config.session.query(LoadTime.time)
-        data: list[LoadTime] = query.filter(
+        data: List[LoadTime] = query.filter(
             LoadTime.day == today,
             LoadTime.stage <= stage,
             LoadTime.code == code
@@ -193,20 +194,33 @@ class YoutubeUpdater(Updater):
     update_logs_row_name = "youtube"
     max_song_len = Config.youtube_max_song_length
 
+    def update_songs_to_send(self):
+        chat_songs = self.get_remote_songs()
+        for chat_id, url in chat_songs:
+            self.insert_song_to_db(chat_id, url, False)
+
     def get_and_send_updates(self):
         if self.should_run():
-            sent_songs = self.get_local_songs()
-            songs_to_send = self.get_remote_songs()
-            for song_to_send in songs_to_send:
-                if song_to_send not in sent_songs:
-                    chat_id = song_to_send[0]
-                    url = song_to_send[1]
+            songs_to_send = self.get_songs_to_send()
+            if len(songs_to_send) == 0:
+                self.update_songs_to_send()
+            else:
+                for song in songs_to_send:
+                    chat_id = song.chat_id
+                    url = song.youtube_url
                     self.send_song(chat_id, url)
-                    self.insert_song_to_db(chat_id, url)
+                    song.sent = True
+                    Config.session.add(song)
+                    Config.session.commit()
+
+    def get_songs_to_send(self):
+        query = Config.session.query(SentSong)
+        data: List[SentSong] = query.filter(SentSong.sent == False).all()
+        return data
 
     def get_local_songs(self):
         query = Config.session.query(SentSong)
-        data: list[SentSong] = query.all()
+        data: List[SentSong] = query.all()
         result = []
         for row in data:
             result.append((row.chat_id, row.youtube_url))
@@ -214,7 +228,7 @@ class YoutubeUpdater(Updater):
 
     def get_remote_songs(self):
         query = Config.session.query(UserSetting)
-        users: list[UserSetting] = query.all()
+        users: List[UserSetting] = query.all()
         result = []
 
         for row in users:
@@ -284,7 +298,7 @@ class YoutubeUpdater(Updater):
         thumb_bio.seek(0)
         return thumb_bio
 
-    def insert_song_to_db(self, chat_id, url):
-        song = SentSong(chat_id=chat_id, youtube_url=url)
+    def insert_song_to_db(self, chat_id, url, sent):
+        song = SentSong(chat_id=chat_id, youtube_url=url, sent=sent)
         Config.session.add(song)
         Config.session.commit()

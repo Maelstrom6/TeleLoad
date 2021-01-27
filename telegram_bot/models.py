@@ -31,6 +31,7 @@ class SentSong(Config.Base):
     __tablename__ = "SentSong"
     chat_id = Column(Integer, primary_key=True)
     youtube_url = Column(String, primary_key=True)
+    sent = Column(Boolean)
 
 
 class ChatHistory(Config.Base):
