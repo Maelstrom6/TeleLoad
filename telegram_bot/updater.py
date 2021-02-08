@@ -195,9 +195,11 @@ class YoutubeUpdater(Updater):
     max_song_len = Config.youtube_max_song_length
 
     def update_songs_to_send(self):
-        chat_songs = self.get_remote_songs()
-        for chat_id, url in chat_songs:
-            self.insert_song_to_db(chat_id, url, False)
+        sent_songs = self.get_local_songs()
+        songs_to_send = self.get_remote_songs()
+        for chat_id, url in songs_to_send:
+            if url not in [song[1] for song in sent_songs]:
+                self.insert_song_to_db(chat_id, url, False)
 
     def get_and_send_updates(self):
         if self.should_run():
